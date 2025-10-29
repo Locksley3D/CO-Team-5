@@ -74,7 +74,7 @@ def main():
         var_range = pyomo.RangeSet(1,len(parts))
 
         # Create variables based on the range
-        model.x = pyomo.Var(var_range, domain = pyomo.NonNegativeReals)
+        model.x = pyomo.Var(var_range, domain = pyomo.NonNegativeIntegers)
 
         # Create a constraint list
         model.c = pyomo.ConstraintList()
@@ -97,18 +97,19 @@ def main():
     
         model.objective = pyomo.Objective(sense = pyomo.maximize, expr = obj)
 
-    # # select a solver
-    # solver = pyomo.SolverFactory('gurobi')
+        # select a solver
+        solver = pyomo.SolverFactory('gurobi')
 
-    # # solve the problem
-    # result = solver.solve(model, tee=True)
+        # solve the problem
+        result = solver.solve(model, tee=True)
 
-    # print("-----Printing the model-----")
-    # model.pprint()
-    # print("-----Printing the results-----")
-    # print(result)
-    # print("-----Printing the values of the optimal solution-----")
-    # print("x1 = ", model.x1(), " - x2 = ", model.x2(), " - x3 = ", model.x3(), " - x4 = ", model.x4(), " - z = ", model.objective())
+        print("-----Printing the model-----")
+        model.pprint()
+        print("-----Printing the results-----")
+        print(result)
+        for j in model.x:
+            print(f"x[{j}] = {model.x[j]():.2f}")
+        (f"Objective = {model.objective():.2f}")
 
 
 if __name__ == "__main__":
