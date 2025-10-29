@@ -1,2 +1,2 @@
 # CO-Team-5
-Project Files for Combinational Optimazation for UOWM
+Project Files for Combinational Optimization for UOWM
