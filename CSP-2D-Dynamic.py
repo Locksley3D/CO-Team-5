@@ -44,7 +44,8 @@ def read_csp_file(filename="csp_data.csv"):
                 length = int(row[1])
                 width = int(row[2])
                 cost = int(row[3])
-                current_parts.append((length, width, cost))
+                min_constr = int(row[4])
+                current_parts.append((length, width, cost,min_constr))
 
             # Stock row
             elif row[0] == "stock":
@@ -80,20 +81,28 @@ def main():
         model.c = pyomo.ConstraintList()
 
         current_part = 1
-        sum=0
+        sumLenght = 0
+        sumWidth = 0
         obj=0
         for p in parts:
 
-            sum+=p[0]*p[1]*model.x[current_part]
+            model.c.add(model.x[current_part] <= p[3])
+
+            sumLenght+=p[0]*model.x[current_part]
+            sumWidth+=p[1]*model.x[current_part]
             obj+=p[2]*model.x[current_part]
 
             current_part+=1
 
-        stockSize=stock[0]*stock[1]
-        print(f"stock size: {stockSize}")
-        print(f"sum is {sum}")
+        stockLenght = stock[0]
+        stockWidth = stock[1]
+        print(f"stockLenght: {stockLenght}")
+        print(f"stockWidth: {stockWidth}")
+        print(f"sumLenght is {sumLenght}")
+        print(f"sumWidth is {sumWidth}")
         print(f"obj is {obj}")
-        model.c.add(sum<=stockSize)
+        model.c.add(sumLenght<=stockLenght)
+        model.c.add(sumWidth<=sumWidth)
     
         model.objective = pyomo.Objective(sense = pyomo.maximize, expr = obj)
 
