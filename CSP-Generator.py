@@ -19,7 +19,8 @@ def main():
                     "Part"+ str(variable),
                     random.randint(1, 40), #Part Length
                     random.randint(1, 40), #Part Width
-                    random.randint(1, 20)  #Part Cost
+                    random.randint(1, 20), #Part Cost
+                    random.randint(1, 10)  #Min Part Constraint
                 ]
                 writer.writerow(row)
 
