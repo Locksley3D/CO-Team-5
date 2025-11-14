@@ -1,88 +1,81 @@
 import pyomo.environ as pyomo
-import csv
 
+# ----------------------
+# Data
+# ----------------------
+part_lengths = [30, 20, 25, 50]       # Length of each part
+part_gains = [5, 9, 4, 12]            # Profit of each part
+demand_lower = [5, 7, 20, 16]         # Minimum demand
+demand_upper = [6, 8, 22, 18]         # Maximum demand
 
-#Part 1 = 10, Part2 = 20, Part3 = 5, Part4 = 40 
+StockLength = 200
+StockCost = 50
+num_stocks = 9
+num_parts = len(part_lengths)
 
-part1length=30
-part2length=20
-part3length=25
-part4length=50
-
-part1Gain=5
-part2Gain=9
-part3Gain=4
-part4Gain=12
-
-part1DemandLower = 5 
-part2DemandLower = 7
-part3DemandLower = 20
-part4DemandLower = 16
-
-part1DemandUpper = 6 
-part2DemandUpper = 8
-part3DemandUpper = 22
-part4DemandUpper = 18
-
-StockLength = 200 # 9 stocks
-StockCost =  50
-
-# initialize the model
+# ----------------------
+# Initialize model
+# ----------------------
 model = pyomo.ConcreteModel()
 
-# define the variables
-model.x1 = pyomo.Var(domain=pyomo.NonNegativeIntegers)
-model.x2 = pyomo.Var(domain=pyomo.NonNegativeIntegers)
-model.x3 = pyomo.Var(domain=pyomo.NonNegativeIntegers)
-model.x4 = pyomo.Var(domain=pyomo.NonNegativeIntegers)
+# Sets
+model.parts = pyomo.RangeSet(0, num_parts-1)
+model.stocks = pyomo.RangeSet(0, num_stocks-1)
 
-model.z1 = pyomo.Var(domain=pyomo.Binary)
-model.z2 = pyomo.Var(domain=pyomo.Binary)
-model.z3 = pyomo.Var(domain=pyomo.Binary)
-model.z4 = pyomo.Var(domain=pyomo.Binary)
-model.z5 = pyomo.Var(domain=pyomo.Binary)
-model.z6 = pyomo.Var(domain=pyomo.Binary)
-model.z7 = pyomo.Var(domain=pyomo.Binary)
-model.z8 = pyomo.Var(domain=pyomo.Binary)
-model.z9 = pyomo.Var(domain=pyomo.Binary)
+# Variables
+# x[i,j] = number of parts i in stock j
+model.x = pyomo.Var(model.parts, model.stocks, domain=pyomo.NonNegativeIntegers)
 
+# z[j] = whether stock j is used
+model.z = pyomo.Var(model.stocks, domain=pyomo.Binary)
 
-# define the constraints
-model.c = pyomo.ConstraintList()
+# ----------------------
+# Constraints
+# ----------------------
 
-#Here we state the size of each piece as well as the size of the 1D stock
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z1)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z2)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z3)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z4)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z5)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z6)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z7)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z8)
-model.c.add(part1length * model.x1 + part2length * model.x2 + part3length * model.x3 + part4length * model.x4 <= StockLength * model.z9)
+# 1. Stock capacity constraints
+def stock_capacity_rule(model, j):
+    return sum(part_lengths[i] * model.x[i,j] for i in model.parts) <= StockLength * model.z[j]
+model.stock_capacity = pyomo.Constraint(model.stocks, rule=stock_capacity_rule)
 
-model.c.add(model.x1 >= part1DemandLower)
-model.c.add(model.x1 <= part1DemandUpper)
-model.c.add(model.x2 >= part2DemandLower)
-model.c.add(model.x2 <= part2DemandUpper)
-model.c.add(model.x3 >= part3DemandLower)
-model.c.add(model.x3 <= part3DemandUpper)
-model.c.add(model.x4 >= part4DemandLower)
-model.c.add(model.x4 <= part4DemandUpper)
+# 2. Demand lower bounds
+def demand_lower_rule(model, i):
+    return sum(model.x[i,j] for j in model.stocks) >= demand_lower[i]
+model.demand_lower = pyomo.Constraint(model.parts, rule=demand_lower_rule)
 
-# define the objective function
-obj = part1Gain * model.x1 + part2Gain * model.x2 + part3Gain * model.x3 + part4Gain * model.x4 - StockCost * model.z1 - StockCost * model.z2 - StockCost * model.z3 - StockCost * model.z4 - StockCost * model.z5 - StockCost * model.z6 - StockCost * model.z7 - StockCost * model.z8 - StockCost * model.z9
-model.objective = pyomo.Objective(sense = pyomo.maximize, expr = obj)
+# 3. Demand upper bounds
+def demand_upper_rule(model, i):
+    return sum(model.x[i,j] for j in model.stocks) <= demand_upper[i]
+model.demand_upper = pyomo.Constraint(model.parts, rule=demand_upper_rule)
 
-# select a solver
+# ----------------------
+# Objective function
+# ----------------------
+model.profit = pyomo.Objective(
+    expr=sum(part_gains[i] * model.x[i,j] for i in model.parts for j in model.stocks)
+         - sum(StockCost * model.z[j] for j in model.stocks),
+    sense=pyomo.maximize
+)
+
+# ----------------------
+# Solve the model
+# ----------------------
 solver = pyomo.SolverFactory('gurobi')
-
-# solve the problem
 result = solver.solve(model, tee=True)
 
-print("-----Printing the model-----")
-model.pprint()
-print("-----Printing the results-----")
-print(result)
-print("-----Printing the values of the optimal solution-----")
-print("x1 = ", model.x1(), " - x2 = ", model.x2(), " - x3 = ", model.x3(), " - x4 = ", model.x4(), " - z = ", model.objective())
+# ----------------------
+# Display results
+# ----------------------
+print("\n----- Optimal Total Parts -----")
+for i in model.parts:
+    total_i = sum(model.x[i,j]() for j in model.stocks)
+    print(f"Part {i+1}: {total_i}")
+
+print("\n----- Stocks Used and Parts in Each Stock -----")
+for j in model.stocks:
+    if model.z[j]() > 0.5:
+        parts_in_stock = [model.x[i,j]() for i in model.parts]
+        print(f"Stock {j+1}: used, parts = {parts_in_stock}")
+
+print("\n----- Total Profit -----")
+print(model.profit())
